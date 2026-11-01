@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Settings2,
   PanelTop,
@@ -28,6 +28,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useStudio } from '@/lib/studio/use-studio';
+import { useStudioNavigation } from '@/lib/studio/use-navigation';
 import { freshProject, makeBlock } from '@/lib/studio/model';
 import { renderPage } from '@/lib/studio/render';
 import { api } from '@/lib/studio/client';
@@ -46,8 +47,6 @@ const navigation = [
 ];
 export default function Studio() {
   const s = useStudio(),
-    [view, setView] = useState('settings'),
-    [pageId, setPageId] = useState(''),
     [navOpen, setNavOpen] = useState(false),
     [templates, setTemplates] = useState(false),
     [template, setTemplate] = useState('starter'),
@@ -55,15 +54,13 @@ export default function Studio() {
     [previewDevice, setPreviewDevice] = useState('desktop'),
     [help, setHelp] = useState(false),
     [applying, setApplying] = useState(false);
+  const { view, pageId, setPageId, go: navigate } = useStudioNavigation(s.project);
   function go(v: string) {
-    setView(v);
+    navigate(v);
     setNavOpen(false);
     window.scrollTo(0, 0);
   }
   const p = s.project;
-  useEffect(() => {
-    if (p && !p.pages.some((pg) => pg.id === pageId)) setPageId(p.pages[0].id);
-  }, [p, pageId]);
   const page = p?.pages.find((pg) => pg.id === pageId) || p?.pages[0];
   if (!p)
     return (
