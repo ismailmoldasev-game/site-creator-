@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus,
   Monitor,
@@ -46,6 +46,11 @@ import SiteFrame from './studio-preview';
 import { TextField, Field, Tag } from './studio-controls';
 import BlockContentSettings from './studio-block-settings';
 import { blockAnchor, pageBlocks } from '@/lib/studio/block-content';
+import {
+  initialPreviewPosition,
+  readPreviewPosition,
+  type PreviewPosition,
+} from '@/lib/studio/editor-preview';
 const blockIcons: Record<string, typeof Layers> = {
   header: LayoutTemplate,
   hero: LayoutTemplate,
@@ -226,8 +231,29 @@ export default function Editor({
     [deleteId, setDeleteId] = useState(''),
     [pageSettings, setPageSettings] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null),
-    scroll = useRef(0),
+    viewport = useRef<{ pageId: string; position: PreviewPosition }>({
+      pageId: page.id,
+      position: initialPreviewPosition,
+    }),
     drag = useRef<{ id: string; group: string } | null>(null);
+  const preview = useMemo(() => {
+    const position =
+      viewport.current.pageId === page.id ? viewport.current.position : initialPreviewPosition;
+    viewport.current = { pageId: page.id, position };
+    const id = uid();
+    return { id, html: renderPage(p, page, true, '', { id, position }) };
+  }, [p, page]);
+  const activePreviewId = useRef(preview.id);
+  activePreviewId.current = preview.id;
+  function selectInPreview() {
+    frame.current?.contentWindow?.postMessage(
+      { studio: 'select-block', previewId: preview.id, id: selected },
+      '*',
+    );
+  }
+  useEffect(() => {
+    selectInPreview();
+  }, [selected, preview.id]);
   useEffect(() => {
     if (window.matchMedia('(max-width:680px)').matches) setDevice('mobile');
   }, []);
@@ -272,16 +298,21 @@ export default function Editor({
   useEffect(() => {
     function message(e: MessageEvent) {
       if (e.source !== frame.current?.contentWindow) return;
+      if (e.data?.previewId !== activePreviewId.current) return;
+      if (['scroll', 'select'].includes(e.data?.studio)) {
+        const position = readPreviewPosition(e.data.position);
+        if (position) viewport.current = { pageId: page.id, position };
+      }
+      if (e.data?.studio === 'ready') selectInPreview();
       if (e.data?.studio === 'select' && all.some((b) => b.id === e.data.id)) {
         setSelected(e.data.id);
         setPanel('inspect');
         setPageSettings(false);
       }
-      if (e.data?.studio === 'scroll' && typeof e.data.y === 'number') scroll.current = e.data.y;
     }
     window.addEventListener('message', message);
     return () => window.removeEventListener('message', message);
-  }, [all]);
+  }, [all, preview.id, page.id, selected]);
   function pick(id: string) {
     setSelected(id);
     setPageSettings(false);
@@ -366,7 +397,7 @@ export default function Editor({
             onChange={(e) => {
               setPageId(e.target.value);
               setSelected('');
-              scroll.current = 0;
+              viewport.current = { pageId: e.target.value, position: initialPreviewPosition };
             }}
           >
             {p.pages.map((pg) => (
@@ -456,7 +487,7 @@ export default function Editor({
                   onClick={() => {
                     setPageId(pg.id);
                     setSelected('');
-                    scroll.current = 0;
+                    viewport.current = { pageId: pg.id, position: initialPreviewPosition };
                     setPanel(null);
                   }}
                 >
@@ -516,13 +547,8 @@ export default function Editor({
                     : Math.max(1000, p.brand.width + 80)
               }
               sandbox="allow-scripts"
-              html={renderPage(p, page, true, selected)}
-              onLoad={() =>
-                frame.current?.contentWindow?.postMessage(
-                  { studio: 'scroll-to', y: scroll.current },
-                  '*',
-                )
-              }
+              html={preview.html}
+              onLoad={selectInPreview}
             />
           </div>
           <button
