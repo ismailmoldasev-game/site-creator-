@@ -118,7 +118,7 @@ export default function Settings({
             <div className="mini-site">
               <iframe
                 title="Миниатюра вашего сайта"
-                sandbox=""
+                sandbox="allow-scripts"
                 srcDoc={renderPage(p, p.pages[0])}
                 tabIndex={-1}
               />

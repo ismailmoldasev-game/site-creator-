@@ -467,7 +467,7 @@ export default function Studio() {
                     ? 768
                     : Math.max(1000, p.brand.width + 80)
               }
-              sandbox="allow-popups allow-top-navigation-by-user-activation"
+              sandbox="allow-scripts allow-popups allow-top-navigation-by-user-activation"
               html={renderPage(p, page)}
             />
           </div>

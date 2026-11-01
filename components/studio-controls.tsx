@@ -2,6 +2,8 @@
 import { useRef } from 'react';
 import { Upload, Image as ImageIcon, X } from 'lucide-react';
 import { imageData } from '@/lib/studio/client';
+import type { ImageSettings } from '@/lib/studio/model';
+import { defaultImageSettings } from '@/lib/studio/block-content';
 export function Field({
   label,
   hint,
@@ -54,13 +56,18 @@ export function ImageField({
   value,
   onChange,
   notify,
+  settings,
+  onSettingsChange,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   notify: (s: string) => void;
+  settings?: ImageSettings;
+  onSettingsChange?: (settings: ImageSettings) => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
+  const options = settings ?? defaultImageSettings;
   return (
     <div className="field">
       <span>{label}</span>
@@ -102,6 +109,66 @@ export function ImageField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
+      )}
+      {value && onSettingsChange && (
+        <details className="image-options" open>
+          <summary>Отображение изображения</summary>
+          <Field label="Размещение изображения">
+            <select
+              value={options.fit}
+              onChange={(e) =>
+                onSettingsChange({ ...options, fit: e.target.value as ImageSettings['fit'] })
+              }
+            >
+              <option value="contain">Целиком — без обрезки</option>
+              <option value="cover">Заполнить рамку</option>
+              <option value="original">Исходные пропорции</option>
+            </select>
+          </Field>
+          {options.fit !== 'original' && (
+            <Field label="Пропорции рамки">
+              <select
+                value={options.ratio}
+                onChange={(e) =>
+                  onSettingsChange({ ...options, ratio: e.target.value as ImageSettings['ratio'] })
+                }
+              >
+                <option value="auto">Из шаблона</option>
+                <option value="16/9">16:9 — широкий</option>
+                <option value="4/3">4:3 — альбомный</option>
+                <option value="1/1">1:1 — квадрат</option>
+                <option value="3/4">3:4 — портретный</option>
+              </select>
+            </Field>
+          )}
+          {options.fit === 'cover' && (
+            <>
+              <Field label={'Положение по горизонтали: ' + options.x + '%'}>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={options.x}
+                  onChange={(e) => onSettingsChange({ ...options, x: +e.target.value })}
+                />
+              </Field>
+              <Field label={'Положение по вертикали: ' + options.y + '%'}>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={options.y}
+                  onChange={(e) => onSettingsChange({ ...options, y: +e.target.value })}
+                />
+              </Field>
+            </>
+          )}
+          <small>
+            {options.fit === 'cover'
+              ? 'Выберите, какую часть фотографии оставить в кадре.'
+              : 'Фотография сохраняется целиком. Рамку можно изменить в любой момент.'}
+          </small>
+        </details>
       )}
     </div>
   );

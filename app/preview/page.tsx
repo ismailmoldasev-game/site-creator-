@@ -24,7 +24,7 @@ export default function Preview() {
   ) : (
     <iframe
       title="Предпросмотр сайта"
-      sandbox="allow-popups allow-top-navigation-by-user-activation"
+      sandbox="allow-scripts allow-popups allow-top-navigation-by-user-activation"
       srcDoc={html}
       style={{
         position: 'fixed',

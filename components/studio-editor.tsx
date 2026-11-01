@@ -43,13 +43,16 @@ import {
 } from '@/lib/studio/model';
 import { renderPage } from '@/lib/studio/render';
 import SiteFrame from './studio-preview';
-import { TextField, Field, ImageField, Tag } from './studio-controls';
+import { TextField, Field, Tag } from './studio-controls';
+import BlockContentSettings from './studio-block-settings';
+import { blockAnchor, pageBlocks } from '@/lib/studio/block-content';
 const blockIcons: Record<string, typeof Layers> = {
   header: LayoutTemplate,
   hero: LayoutTemplate,
   text: Type,
   features: Layers,
   'image-text': ImageIcon,
+  slideshow: ImageIcon,
   quote: Quote,
   faq: HelpCircle,
   contact: Mail,
@@ -603,35 +606,35 @@ export default function Editor({
                     </Tag>
                   )}
                 </div>
-                {definition.fields.map((f) =>
-                  f.type === 'image' ? (
-                    <ImageField
-                      key={f.key}
-                      label={f.label}
-                      value={block.values[f.key] ?? f.default}
-                      onChange={(v) =>
-                        editBlock((b) => {
-                          b.values[f.key] = v;
-                        })
-                      }
-                      notify={s.notify}
-                    />
-                  ) : (
-                    <TextField
-                      key={f.key}
-                      label={f.label}
-                      value={block.values[f.key] ?? f.default}
-                      multiline={f.type === 'textarea'}
-                      onChange={(v) =>
-                        editBlock((b) => {
-                          b.values[f.key] = v;
-                        })
-                      }
-                    />
-                  ),
-                )}
+                <BlockContentSettings
+                  block={block}
+                  definition={definition}
+                  project={p}
+                  page={page}
+                  editBlock={editBlock}
+                  notify={s.notify}
+                />
                 <div className="inspector-divider" />
                 <h4>Оформление секции</h4>
+                <TextField
+                  label="Якорь раздела"
+                  value={block.anchor ?? ''}
+                  placeholder={blockAnchor(block, pageBlocks(p, page))}
+                  hint={
+                    'Ссылка на раздел: #' +
+                    blockAnchor(block, pageBlocks(p, page)) +
+                    '. Латинские буквы, цифры и дефис; начинайте с буквы.'
+                  }
+                  onChange={(value) =>
+                    editBlock((b) => {
+                      b.anchor = value
+                        .replace(/^#/, '')
+                        .replace(/[^a-zA-Z0-9_-]/g, '')
+                        .replace(/^[^a-zA-Z]+/, '')
+                        .slice(0, 80);
+                    })
+                  }
+                />
                 <Field label={'Отступ сверху и снизу: ' + block.padding + ' px'}>
                   <input
                     type="range"

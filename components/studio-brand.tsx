@@ -186,6 +186,7 @@ export default function Brand({ s }: { s: StudioState }) {
           <div className={'brand-frame ' + (mobile ? 'mobile' : '')}>
             <SiteFrame
               title="Предпросмотр брендинга"
+              sandbox="allow-scripts"
               width={mobile ? 390 : Math.max(1000, p.brand.width + 80)}
               html={renderPage(p, p.pages[0])}
             />

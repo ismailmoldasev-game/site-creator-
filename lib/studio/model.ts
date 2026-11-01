@@ -14,6 +14,26 @@ export const definitionSchema = z.object({
   fields: z.array(fieldSchema).max(30),
   generated: z.boolean().optional(),
 });
+export const imageSettingsSchema = z.object({
+  fit: z.enum(['contain', 'cover', 'original']).default('contain'),
+  x: z.number().min(0).max(100).default(50),
+  y: z.number().min(0).max(100).default(50),
+  ratio: z.enum(['auto', '16/9', '4/3', '1/1', '3/4']).default('auto'),
+});
+export const featureCardSchema = z.object({
+  id: z.string().min(1).max(100),
+  title: z.string().max(500),
+  text: z.string().max(10000),
+});
+export const slideSchema = z.object({
+  id: z.string().min(1).max(100),
+  image: z.string().max(900000),
+  title: z.string().max(500),
+  text: z.string().max(10000),
+  button: z.string().max(100),
+  href: z.string().max(2000),
+  imageSettings: imageSettingsSchema.optional(),
+});
 export const blockSchema = z.object({
   id: z.string().min(1).max(100),
   type: z.string().max(80),
@@ -23,6 +43,18 @@ export const blockSchema = z.object({
   background: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+  layout: z.enum(['text-first', 'image-first']).optional(),
+  buttonVisible: z.boolean().optional(),
+  anchor: z
+    .string()
+    .regex(/^(?:[a-zA-Z][a-zA-Z0-9_-]{0,79})?$/)
+    .optional(),
+  images: z.record(imageSettingsSchema).optional(),
+  cards: z.array(featureCardSchema).min(1).max(24).optional(),
+  slides: z.array(slideSchema).min(1).max(20).optional(),
+  slideshow: z
+    .object({ autoplay: z.boolean(), interval: z.number().int().min(3).max(20) })
     .optional(),
 });
 export const pageSchema = z.object({
@@ -114,6 +146,9 @@ export type Project = z.infer<typeof projectSchema>;
 export type Block = z.infer<typeof blockSchema>;
 export type Definition = z.infer<typeof definitionSchema>;
 export type Page = z.infer<typeof pageSchema>;
+export type ImageSettings = z.infer<typeof imageSettingsSchema>;
+export type FeatureCard = z.infer<typeof featureCardSchema>;
+export type Slide = z.infer<typeof slideSchema>;
 export function uid(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   const a = crypto.getRandomValues(new Uint8Array(16));
@@ -202,7 +237,7 @@ export const builtin: Definition[] = [
   {
     id: 'features',
     name: 'Преимущества',
-    description: 'Три карточки с главными особенностями',
+    description: 'Добавляйте, удаляйте и переставляйте карточки',
     category: 'Контент',
     fields: [
       { key: 'title', label: 'Заголовок', type: 'text', default: 'Внимание к каждой детали.' },
@@ -244,6 +279,14 @@ export const builtin: Definition[] = [
       },
     ],
     html: '<section class="split wrap"><div class="image-placeholder"><img src="{{image}}" alt="{{title}}"></div><div><p class="eyebrow">В ДЕТАЛЯХ</p><h2>{{title}}</h2><p class="lead">{{text}}</p></div></section>',
+  },
+  {
+    id: 'slideshow',
+    name: 'Слайдшоу',
+    description: 'Фотографии с подписями, стрелками и переключением свайпом',
+    category: 'Контент',
+    fields: [{ key: 'title', label: 'Заголовок', type: 'text', default: 'История в фотографиях.' }],
+    html: '<section class="slideshow wrap"><h2>{{title}}</h2></section>',
   },
   {
     id: 'quote',
