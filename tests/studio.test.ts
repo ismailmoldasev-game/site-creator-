@@ -124,3 +124,52 @@ test('ZIP exports store valid CRC and UTF-8 contents', () => {
   assert.equal(view.getUint16(e + 10, true), 2);
   assert.equal(view.getUint16(6, true), 0x800);
 });
+
+import { recoverDraft } from '../lib/studio/draft';
+test('immediate reload restores an unsent draft automatically', () => {
+  const base = freshProject(),
+    next = structuredClone(base);
+  next.name = 'Мои правки';
+  assert.equal(
+    recoverDraft(JSON.stringify({ project: next, base, revision: 1 }), base, 1).kind,
+    'restore',
+  );
+  assert.equal(
+    recoverDraft(JSON.stringify({ project: next, base, revision: 1 }), next, 2).kind,
+    'clean',
+  );
+});
+test('draft recovery keeps another tab changes intact', () => {
+  const base = freshProject(),
+    local = structuredClone(base),
+    remote = structuredClone(base);
+  local.name = 'Локальная правка';
+  remote.name = 'Другая вкладка';
+  assert.equal(
+    recoverDraft(JSON.stringify({ project: local, base, revision: 1 }), remote, 2).kind,
+    'conflict',
+  );
+  assert.equal(
+    recoverDraft(JSON.stringify({ project: local, revision: 1 }), base, 1).kind,
+    'restore',
+  );
+  assert.equal(
+    recoverDraft(JSON.stringify({ project: local, revision: 1 }), remote, 2).kind,
+    'conflict',
+  );
+});
+test('a newer edit survives acknowledgement of the previous save', () => {
+  const initial = freshProject(),
+    acknowledged = structuredClone(initial),
+    pending = structuredClone(initial);
+  acknowledged.name = 'Первая правка';
+  pending.name = 'Вторая правка';
+  assert.equal(
+    recoverDraft(
+      JSON.stringify({ project: pending, base: acknowledged, revision: 2 }),
+      acknowledged,
+      2,
+    ).kind,
+    'restore',
+  );
+});

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { type Project, projectSchema } from './model';
 import { api, backup } from './client';
+import { recoverDraft } from './draft';
 export type Connections = { github: boolean; openai: boolean; vault: boolean };
 export function useStudio() {
   const [locked, setLockedState] = useState(false);
@@ -44,10 +45,18 @@ export function useStudio() {
       try {
         const raw = localStorage.getItem('studio-recovery');
         if (raw) {
-          const b = JSON.parse(raw);
-          if (JSON.stringify(b.project) !== saved.current)
-            setRecovery(projectSchema.parse(b.project));
-          else localStorage.removeItem('studio-recovery');
+          const pending = recoverDraft(raw, p, d.revision);
+          if (pending.kind === 'restore') {
+            doc.current = pending.project;
+            setProject(pending.project);
+            setStatus('pending');
+            setRecovery(null);
+          } else if (pending.kind === 'conflict') {
+            setRecovery(pending.project);
+          } else {
+            localStorage.removeItem('studio-recovery');
+            setRecovery(null);
+          }
         }
       } catch {}
     } catch (e) {
@@ -80,7 +89,19 @@ export function useStudio() {
         if (JSON.stringify(doc.current) === serialized) {
           localStorage.removeItem('studio-recovery');
           if (mounted.current) setStatus('saved');
-        } else if (mounted.current) setStatus('pending');
+        } else {
+          try {
+            localStorage.setItem(
+              'studio-recovery',
+              JSON.stringify({
+                project: doc.current,
+                revision: d.revision,
+                base: current,
+              }),
+            );
+          } catch {}
+          if (mounted.current) setStatus('pending');
+        }
         setError('');
       } catch (e) {
         if (mounted.current) {
@@ -115,7 +136,11 @@ export function useStudio() {
       try {
         localStorage.setItem(
           'studio-recovery',
-          JSON.stringify({ project: next, revision: revision.current }),
+          JSON.stringify({
+            project: next,
+            revision: revision.current,
+            base: JSON.parse(saved.current),
+          }),
         );
       } catch {
         notify(
@@ -138,9 +163,36 @@ export function useStudio() {
         e.returnValue = '';
       }
     }
+    function saveWhenHidden() {
+      if (document.visibilityState === 'hidden') flush().catch(() => {});
+    }
+    function retry() {
+      flush().catch(() => {});
+    }
+    function saveBeforeExit() {
+      if (!doc.current || inflight.current || JSON.stringify(doc.current) === saved.current) return;
+      const body = JSON.stringify({ project: doc.current, revision: revision.current });
+      // Browsers limit keepalive bodies to 64 KiB. Larger drafts restore from the local copy.
+      if (new Blob([body]).size < 60000) {
+        fetch('/api/studio', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    }
     window.addEventListener('beforeunload', onClose);
-    return () => window.removeEventListener('beforeunload', onClose);
-  }, []);
+    window.addEventListener('pagehide', saveBeforeExit);
+    window.addEventListener('online', retry);
+    document.addEventListener('visibilitychange', saveWhenHidden);
+    return () => {
+      window.removeEventListener('beforeunload', onClose);
+      window.removeEventListener('pagehide', saveBeforeExit);
+      window.removeEventListener('online', retry);
+      document.removeEventListener('visibilitychange', saveWhenHidden);
+    };
+  }, [flush]);
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(() => setNotice(''), 6000);
@@ -158,7 +210,11 @@ export function useStudio() {
     try {
       localStorage.setItem(
         'studio-recovery',
-        JSON.stringify({ project: next, revision: revision.current }),
+        JSON.stringify({
+          project: next,
+          revision: revision.current,
+          base: JSON.parse(saved.current),
+        }),
       );
     } catch {}
     tick((t) => t + 1);
