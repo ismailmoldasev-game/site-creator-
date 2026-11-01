@@ -5,8 +5,8 @@ export const metadata: Metadata = {
   title: 'Site Studio — конструктор сайтов',
   description: 'Страницы, единый стиль, ИИ-блоки и публикация.',
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
+    icon: '/favicon.svg?v=leaf',
+    shortcut: '/favicon.svg?v=leaf',
   },
 };
 

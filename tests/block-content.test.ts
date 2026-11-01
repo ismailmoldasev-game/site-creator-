@@ -12,6 +12,48 @@ import {
 import { projectFiles, renderBlock, renderPage } from '../lib/studio/render';
 import { slideshowScript } from '../lib/studio/slideshow';
 
+test('older blocks keep their existing labels without a data migration', () => {
+  const project = freshProject();
+  for (const [type, key, expected] of [
+    ['features', 'eyebrow', 'НАШ ПОДХОД'],
+    ['image-text', 'eyebrow', 'В ДЕТАЛЯХ'],
+    ['contact', 'eyebrow', 'БУДЕМ НА СВЯЗИ'],
+    ['hero', 'note', 'Большие перемены начинаются с малого.'],
+    ['hero', 'artLabel', 'СОЗДАВАЙТЕ СВОЁ ↗'],
+  ]) {
+    const block = makeBlock(type);
+    delete block.values[key];
+    block.values.title = 'Мой заполненный заголовок';
+    const before = JSON.stringify(block);
+    const rendered = renderBlock(block, project);
+    assert.ok(rendered.includes(expected));
+    assert.ok(rendered.includes('Мой заполненный заголовок'));
+    assert.equal(JSON.stringify(block), before);
+  }
+});
+
+test('template labels are editable, escaped, saved, and fully hidden when cleared', () => {
+  const project = freshProject();
+  for (const [type, key, className] of [
+    ['features', 'eyebrow', 'eyebrow'],
+    ['image-text', 'eyebrow', 'eyebrow'],
+    ['contact', 'eyebrow', 'eyebrow'],
+    ['hero', 'eyebrow', 'eyebrow'],
+    ['hero', 'note', 'hero-note'],
+    ['hero', 'artLabel', 'art-tag'],
+  ]) {
+    const block = makeBlock(type);
+    block.values[key] = 'Свой текст <&>';
+    project.pages[0].blocks = [block];
+    const restored = projectSchema.parse(JSON.parse(JSON.stringify(project)));
+    assert.ok(
+      renderBlock(restored.pages[0].blocks[0], restored).includes('Свой текст &lt;&amp;&gt;'),
+    );
+    block.values[key] = '  ';
+    assert.ok(!renderBlock(block, project).includes(`class="${className}"`));
+  }
+});
+
 test('old project content survives parsing and editing the legacy feature cards', () => {
   const project = freshProject();
   const features = project.pages[0].blocks.find((block) => block.type === 'features')!;

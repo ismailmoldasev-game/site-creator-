@@ -65,12 +65,7 @@ export default function Studio() {
   if (!p)
     return (
       <div className="loading-screen">
-        <div className="studio-logo">
-          <span />
-          <span />
-          <span />
-          <span />
-        </div>
+        <img className="studio-logo" src="/favicon.svg?v=leaf" alt="" aria-hidden="true" />
         <h1>Site Studio</h1>
         <p>{s.status === 'error' ? s.error : 'Открываем ваше рабочее пространство…'}</p>
         {s.status === 'error' ? (
@@ -87,12 +82,7 @@ export default function Studio() {
     <div className={'app-shell ' + (view === 'editor' ? 'editor-mode' : '')}>
       <aside className={'main-sidebar ' + (navOpen ? 'nav-open' : '')}>
         <div className="app-brand">
-          <div className="studio-logo">
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
+          <img className="studio-logo" src="/favicon.svg?v=leaf" alt="" aria-hidden="true" />
           <span>
             site<span>studio</span>
             <sup>β</sup>

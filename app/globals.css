@@ -303,25 +303,8 @@ input[hidden] {
 .studio-logo {
   width: 27px;
   height: 27px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px;
-  transform: rotate(-1deg);
+  display: block;
   flex-shrink: 0;
-}
-.studio-logo span {
-  background: #416b58;
-  border-radius: 3px;
-}
-.studio-logo span:nth-child(2) {
-  background: #b8c9ba;
-  border-radius: 3px 9px 3px 3px;
-}
-.studio-logo span:nth-child(3) {
-  background: #b8c9ba;
-}
-.studio-logo span:nth-child(4) {
-  border-radius: 3px 3px 3px 9px;
 }
 .workspace-label,
 .nav-label {

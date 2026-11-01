@@ -174,7 +174,7 @@ export default function BlockContentSettings({
         .filter(
           (f) =>
             !(block.type === 'hero' && ['button', 'href'].includes(f.key)) &&
-            !(block.type === 'features' && f.key !== 'title'),
+            !(block.type === 'features' && !['eyebrow', 'title'].includes(f.key)),
         )
         .map((f) =>
           f.type === 'image' ? (
@@ -206,6 +206,11 @@ export default function BlockContentSettings({
               label={f.label}
               value={value(f.key)}
               multiline={f.type === 'textarea'}
+              hint={
+                ['eyebrow', 'note', 'artLabel'].includes(f.key)
+                  ? 'Оставьте пустым, чтобы скрыть эту надпись.'
+                  : undefined
+              }
               onChange={(v) => setValue(f.key, v)}
             />
           ),

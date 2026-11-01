@@ -72,9 +72,11 @@ function renderSlideshow(block: Block) {
 export function renderBlock(b: Block, p: Project) {
   const d = [...builtin, ...p.library].find((x) => x.id === b.type);
   if (!d) return '<div class="wrap">Блок недоступен</div>';
+  const value = (key: string) =>
+    b.values[key] ?? d.fields.find((field) => field.key === key)?.default ?? '';
   if (b.type === 'slideshow') return renderSlideshow(b);
   if (b.type === 'features')
-    return `<section class="features wrap"><p class="eyebrow">НАШ ПОДХОД</p><h2>${escapeHTML(b.values.title ?? d.fields[0].default)}</h2><div class="cards">${featureCards(
+    return `<section class="features wrap">${value('eyebrow').trim() ? `<p class="eyebrow">${escapeHTML(value('eyebrow'))}</p>` : ''}<h2>${escapeHTML(value('title'))}</h2><div class="cards">${featureCards(
       b,
     )
       .map(
@@ -138,6 +140,7 @@ export function renderBlock(b: Block, p: Project) {
     return escapeHTML(f?.type === 'url' ? safeURL(v) : f?.type === 'image' ? safeImage(v) : v);
   });
   h = h.replace(/<img\b[^>]*\bsrc=""[^>]*>/gi, '');
+  if (!d.generated) h = h.replace(/<(p|div) class="(?:eyebrow|hero-note|art-tag)">\s*<\/\1>/g, '');
   if (b.type === 'header' && safeImage(p.brand.logo))
     h = h.replace(
       /(<a class="wordmark"[^>]*>)[\s\S]*?(<\/a>)/,

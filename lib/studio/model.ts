@@ -208,8 +208,20 @@ export const builtin: Definition[] = [
       { key: 'button', label: 'Текст кнопки', type: 'text', default: 'Узнать больше' },
       { key: 'href', label: 'Ссылка', type: 'url', default: '#about' },
       { key: 'image', label: 'Изображение (необязательно)', type: 'image', default: '' },
+      {
+        key: 'note',
+        label: 'Подпись под кнопкой',
+        type: 'text',
+        default: 'Большие перемены начинаются с малого.',
+      },
+      {
+        key: 'artLabel',
+        label: 'Надпись на композиции (без фотографии)',
+        type: 'text',
+        default: 'СОЗДАВАЙТЕ СВОЁ ↗',
+      },
     ],
-    html: '<section class="hero wrap"><div><p class="eyebrow">{{eyebrow}}</p><h1>{{title}}</h1><p class="lead">{{text}}</p><a class="sbtn" href="{{href}}">{{button}} <span>↗</span></a><p class="hero-note">Большие перемены начинаются с малого.</p></div><div class="hero-art"><img class="hero-photo" src="{{image}}" alt=""><div class="art-arch"></div><div class="art-circle"></div><div class="art-stone"></div><div class="art-tag">СОЗДАВАЙТЕ СВОЁ ↗</div></div></section>',
+    html: '<section class="hero wrap"><div><p class="eyebrow">{{eyebrow}}</p><h1>{{title}}</h1><p class="lead">{{text}}</p><a class="sbtn" href="{{href}}">{{button}} <span>↗</span></a><p class="hero-note">{{note}}</p></div><div class="hero-art"><img class="hero-photo" src="{{image}}" alt=""><div class="art-arch"></div><div class="art-circle"></div><div class="art-stone"></div><div class="art-tag">{{artLabel}}</div></div></section>',
   },
   {
     id: 'text',
@@ -217,7 +229,7 @@ export const builtin: Definition[] = [
     description: 'Заголовок и текст в две колонки',
     category: 'Контент',
     fields: [
-      { key: 'eyebrow', label: 'Метка', type: 'text', default: 'О НАС' },
+      { key: 'eyebrow', label: 'Надзаголовок', type: 'text', default: 'О НАС' },
       {
         key: 'title',
         label: 'Заголовок',
@@ -240,6 +252,7 @@ export const builtin: Definition[] = [
     description: 'Добавляйте, удаляйте и переставляйте карточки',
     category: 'Контент',
     fields: [
+      { key: 'eyebrow', label: 'Надзаголовок', type: 'text', default: 'НАШ ПОДХОД' },
       { key: 'title', label: 'Заголовок', type: 'text', default: 'Внимание к каждой детали.' },
       ...['one', 'two', 'three'].flatMap((key, i) => [
         {
@@ -260,7 +273,7 @@ export const builtin: Definition[] = [
         },
       ]),
     ],
-    html: '<section class="features wrap"><p class="eyebrow">НАШ ПОДХОД</p><h2>{{title}}</h2><div class="cards"><article><span class="card-num">01 ↗</span><h3>{{oneTitle}}</h3><p>{{oneText}}</p></article><article><span class="card-num">02 ↗</span><h3>{{twoTitle}}</h3><p>{{twoText}}</p></article><article><span class="card-num">03 ↗</span><h3>{{threeTitle}}</h3><p>{{threeText}}</p></article></div></section>',
+    html: '<section class="features wrap"><p class="eyebrow">{{eyebrow}}</p><h2>{{title}}</h2><div class="cards"><article><span class="card-num">01 ↗</span><h3>{{oneTitle}}</h3><p>{{oneText}}</p></article><article><span class="card-num">02 ↗</span><h3>{{twoTitle}}</h3><p>{{twoText}}</p></article><article><span class="card-num">03 ↗</span><h3>{{threeTitle}}</h3><p>{{threeText}}</p></article></div></section>',
   },
   {
     id: 'image-text',
@@ -269,6 +282,7 @@ export const builtin: Definition[] = [
     category: 'Контент',
     fields: [
       { key: 'image', label: 'Изображение', type: 'image', default: '' },
+      { key: 'eyebrow', label: 'Надзаголовок', type: 'text', default: 'В ДЕТАЛЯХ' },
       { key: 'title', label: 'Заголовок', type: 'text', default: 'Покажите главное.' },
       {
         key: 'text',
@@ -278,7 +292,7 @@ export const builtin: Definition[] = [
           'Добавьте фотографию проекта, продукта или команды. Хорошие истории заслуживают хорошего представления.',
       },
     ],
-    html: '<section class="split wrap"><div class="image-placeholder"><img src="{{image}}" alt="{{title}}"></div><div><p class="eyebrow">В ДЕТАЛЯХ</p><h2>{{title}}</h2><p class="lead">{{text}}</p></div></section>',
+    html: '<section class="split wrap"><div class="image-placeholder"><img src="{{image}}" alt="{{title}}"></div><div><p class="eyebrow">{{eyebrow}}</p><h2>{{title}}</h2><p class="lead">{{text}}</p></div></section>',
   },
   {
     id: 'slideshow',
@@ -327,6 +341,7 @@ export const builtin: Definition[] = [
     description: 'Приглашение написать или позвонить',
     category: 'Контакты',
     fields: [
+      { key: 'eyebrow', label: 'Надзаголовок', type: 'text', default: 'БУДЕМ НА СВЯЗИ' },
       {
         key: 'title',
         label: 'Заголовок',
@@ -347,7 +362,7 @@ export const builtin: Definition[] = [
         default: 'mailto:hello@example.com',
       },
     ],
-    html: '<section id="contacts" class="contact"><div class="wrap"><p class="eyebrow">БУДЕМ НА СВЯЗИ</p><h2>{{title}}</h2><p>{{text}}</p><a class="sbtn" href="{{href}}">{{button}} ↗</a></div></section>',
+    html: '<section id="contacts" class="contact"><div class="wrap"><p class="eyebrow">{{eyebrow}}</p><h2>{{title}}</h2><p>{{text}}</p><a class="sbtn" href="{{href}}">{{button}} ↗</a></div></section>',
   },
   {
     id: 'footer',
