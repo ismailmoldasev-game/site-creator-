@@ -640,6 +640,8 @@ export default function Editor({
                   page={page}
                   editBlock={editBlock}
                   notify={s.notify}
+                  device={device}
+                  onDeviceChange={setDevice}
                 />
                 <div className="inspector-divider" />
                 <h4>Оформление секции</h4>

@@ -14,8 +14,9 @@ test('full-screen image has no section spacing and its optional button survives 
   project.pages[0].blocks = [image];
   const html = renderPage(project, project.pages[0]);
   assert.ok(html.includes('full-image-block" style="padding-block:0px;'));
-  assert.ok(html.includes('height:100svh'));
-  assert.ok(renderBlock(image, project).includes('object-fit:cover'));
+  assert.ok(html.includes('height:calc(var(--fi-height)*1svh)'));
+  assert.ok(renderBlock(image, project).includes('data-image-desktop="natural"'));
+  assert.ok(renderBlock(image, project).includes('data-image-mobile="natural"'));
   assert.ok(!renderBlock(image, project).includes('<a '));
   assert.ok(!renderBlock(image, project).includes('<p>'));
   image.buttonVisible = true;

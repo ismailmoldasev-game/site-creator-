@@ -8,7 +8,8 @@ import {
 } from './block-content';
 import { slideshowCSS, slideshowScript } from './slideshow';
 import { editorPreviewScript, initialPreviewPosition, type EditorPreview } from './editor-preview';
-import { fullImageCSS, headerCSS, headerScript } from './site-header';
+import { headerCSS, headerScript } from './site-header';
+import { fullImageCSS, fullImageFrame } from './full-image';
 import { headerLinks } from './header-navigation';
 export const escapeHTML = (v: string) =>
   String(v).replace(
@@ -75,14 +76,20 @@ function renderHeader(block: Block, project: Project) {
   return `<header class="site-nav wrap" data-site-header><a class="wordmark" href="index.html">${brand}</a><div class="site-header-content" id="nav-${escapeHTML(block.id)}" data-header-panel>${navigation ? `<nav aria-label="Основная навигация">${navigation}</nav>` : ''}${button}</div><button type="button" class="site-menu-toggle" data-header-control aria-controls="nav-${escapeHTML(block.id)}" aria-expanded="false" aria-label="Открыть меню"><span></span><span></span><span></span></button></header>`;
 }
 function renderFullImage(block: Block) {
-  const src = safeImage(block.values.image ?? '');
-  const settings = block.images?.image ?? { ...defaultImageSettings, fit: 'cover' };
+  const mobileSource = safeImage(block.values.imageMobile ?? '');
+  const src = safeImage(block.values.image ?? '') || mobileSource;
+  const desktop = fullImageFrame(block, 'desktop');
+  const mobile = fullImageFrame(block, 'mobile');
+  const frameStyle = `--fi-height:${desktop.height};--fi-fit:${desktop.mode === 'cover' ? 'cover' : 'contain'};--fi-x:${desktop.x}%;--fi-y:${desktop.y}%;--fi-mobile-height:${mobile.height};--fi-mobile-fit:${mobile.mode === 'cover' ? 'cover' : 'contain'};--fi-mobile-x:${mobile.x}%;--fi-mobile-y:${mobile.y}%;`;
+  const mobileSrcset = mobileSource.startsWith('data:')
+    ? mobileSource
+    : mobileSource.replaceAll(',', '%2C').replace(/\s/g, (c) => encodeURIComponent(c));
   const position = block.buttonPosition ?? { x: 50, y: 80 };
   const button =
     block.buttonVisible === true && (block.values.button ?? 'Подробнее').trim()
       ? `<div class="full-image-button-area"><a class="sbtn full-image-action" href="${escapeHTML(safeURL(block.values.href ?? '#about'))}" style="left:${position.x}%;top:${position.y}%;transform:translate(-${position.x}%,-${position.y}%);">${escapeHTML(block.values.button ?? 'Подробнее')}</a></div>`
       : '';
-  return `<section class="full-image">${src ? `<img src="${escapeHTML(src)}" alt="${escapeHTML(block.values.imageAlt ?? '')}" style="${imageStyle({ ...settings, fit: settings.fit === 'cover' ? 'cover' : 'contain' })}">` : ''}${button}</section>`;
+  return `<section class="full-image" data-image-desktop="${desktop.mode}" data-image-mobile="${mobile.mode}" style="${frameStyle}">${src ? `<picture class="full-image-media">${mobileSource && mobileSource !== src ? `<source media="(max-width:700px)" srcset="${escapeHTML(mobileSrcset)}">` : ''}<img class="full-image-photo" src="${escapeHTML(src)}" alt="${escapeHTML(block.values.imageAlt ?? '')}"></picture>` : '<div class="full-image-media full-image-empty" aria-hidden="true"></div>'}${button}</section>`;
 }
 function renderSlideshow(block: Block) {
   const slides = blockSlides(block);

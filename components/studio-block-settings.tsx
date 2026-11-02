@@ -10,9 +10,9 @@ import {
   moveItem,
   newSlide,
   pageBlocks,
-  defaultImageSettings,
 } from '@/lib/studio/block-content';
 import { Field, ImageField, TextField } from './studio-controls';
+import FullImageSettings from './studio-full-image-settings';
 
 function LinkField({
   value,
@@ -320,6 +320,8 @@ export default function BlockContentSettings({
   page,
   editBlock,
   notify,
+  device,
+  onDeviceChange,
 }: {
   block: Block;
   definition: Definition;
@@ -327,6 +329,8 @@ export default function BlockContentSettings({
   page: Page;
   editBlock: (fn: (block: Block) => void) => void;
   notify: (message: string) => void;
+  device: string;
+  onDeviceChange: (device: 'desktop' | 'mobile') => void;
 }) {
   const value = (key: string) =>
     block.values[key] ?? definition.fields.find((f) => f.key === key)?.default ?? '';
@@ -338,6 +342,15 @@ export default function BlockContentSettings({
   const slides = block.type === 'slideshow' ? blockSlides(block) : [];
   return (
     <>
+      {block.type === 'full-image' && (
+        <FullImageSettings
+          block={block}
+          device={device}
+          onDeviceChange={onDeviceChange}
+          editBlock={editBlock}
+          notify={notify}
+        />
+      )}
       {block.type === 'header' && (
         <>
           <Field
@@ -385,6 +398,7 @@ export default function BlockContentSettings({
         .filter(
           (f) =>
             !(['hero', 'full-image'].includes(block.type) && ['button', 'href'].includes(f.key)) &&
+            !(block.type === 'full-image' && f.key === 'image') &&
             !(block.type === 'features' && !['eyebrow', 'title'].includes(f.key)),
         )
         .map((f) =>
@@ -394,13 +408,7 @@ export default function BlockContentSettings({
               label={f.label}
               value={value(f.key)}
               onChange={(v) => setValue(f.key, v)}
-              settings={
-                block.images?.[f.key] ??
-                (block.type === 'full-image'
-                  ? { ...defaultImageSettings, fit: 'cover' }
-                  : undefined)
-              }
-              fixedFrame={block.type === 'full-image'}
+              settings={block.images?.[f.key]}
               onSettingsChange={(settings) =>
                 editBlock((b) => {
                   b.images = { ...b.images, [f.key]: settings };

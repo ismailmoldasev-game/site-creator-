@@ -1038,6 +1038,24 @@ input[hidden] {
 .link-settings .field {
   margin-bottom: 10px;
 }
+.image-device-switch {
+  display: flex;
+  width: 100%;
+  margin: 20px 0 10px;
+  gap: 4px;
+}
+.image-device-switch button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  min-width: 0;
+}
+.full-image-settings > .small-note {
+  margin-bottom: 18px;
+}
 .setup-aside {
   padding-top: 1px;
 }

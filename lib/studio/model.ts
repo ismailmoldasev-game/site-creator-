@@ -20,6 +20,12 @@ export const imageSettingsSchema = z.object({
   y: z.number().min(0).max(100).default(50),
   ratio: z.enum(['auto', '16/9', '4/3', '1/1', '3/4']).default('auto'),
 });
+export const fullImageFrameSchema = z.object({
+  mode: z.enum(['natural', 'cover', 'contain']),
+  height: z.number().int().min(20).max(100).default(100),
+  x: z.number().min(0).max(100).default(50),
+  y: z.number().min(0).max(100).default(50),
+});
 export const featureCardSchema = z.object({
   id: z.string().min(1).max(100),
   title: z.string().max(500),
@@ -79,6 +85,9 @@ export const blockSchema = z.object({
     .regex(/^(?:[a-zA-Z][a-zA-Z0-9_-]{0,79})?$/)
     .optional(),
   images: z.record(imageSettingsSchema).optional(),
+  fullImage: z
+    .object({ desktop: fullImageFrameSchema.optional(), mobile: fullImageFrameSchema.optional() })
+    .optional(),
   cards: z.array(featureCardSchema).min(1).max(24).optional(),
   slides: z.array(slideSchema).min(1).max(20).optional(),
   slideshow: z
@@ -187,6 +196,7 @@ export type Block = z.infer<typeof blockSchema>;
 export type Definition = z.infer<typeof definitionSchema>;
 export type Page = z.infer<typeof pageSchema>;
 export type ImageSettings = z.infer<typeof imageSettingsSchema>;
+export type FullImageFrame = z.infer<typeof fullImageFrameSchema>;
 export type FeatureCard = z.infer<typeof featureCardSchema>;
 export type Slide = z.infer<typeof slideSchema>;
 export type MenuItem = z.infer<typeof menuItemSchema>;
@@ -233,7 +243,7 @@ export const builtin: Definition[] = [
   {
     id: 'full-image',
     name: 'Изображение на весь экран',
-    description: 'Без отступов. Кнопка по желанию с настройкой положения',
+    description: 'Без отступов. Гибкая высота, отдельный кадр для телефона и кнопка по желанию',
     category: 'Основные',
     fields: [
       { key: 'image', label: 'Изображение', type: 'image', default: '' },
@@ -455,6 +465,10 @@ export function makeBlock(type: string, library: Definition[] = []): Block {
           buttonVisible: false,
           buttonPosition: { x: 50, y: 80 },
           images: { image: { fit: 'cover' as const, x: 50, y: 50, ratio: 'auto' as const } },
+          fullImage: {
+            desktop: { mode: 'natural' as const, height: 100, x: 50, y: 50 },
+            mobile: { mode: 'natural' as const, height: 100, x: 50, y: 50 },
+          },
         }
       : {}),
   };
