@@ -9,6 +9,7 @@ import {
 import { slideshowCSS, slideshowScript } from './slideshow';
 import { editorPreviewScript, initialPreviewPosition, type EditorPreview } from './editor-preview';
 import { fullImageCSS, headerCSS, headerScript } from './site-header';
+import { headerLinks } from './header-navigation';
 export const escapeHTML = (v: string) =>
   String(v).replace(
     /[&<>"']/g,
@@ -64,14 +65,14 @@ function renderHeader(block: Block, project: Project) {
   const brand = logo
     ? `<img class="brand-logo" src="${escapeHTML(logo)}" alt="${escapeHTML(value('name') || project.name)}">`
     : escapeHTML(value('name'));
-  const navigation = project.pages
-    .map((page) => `<a href="${page.slug || 'index'}.html">${escapeHTML(page.name)}</a>`)
+  const navigation = headerLinks(block, project)
+    .map((item) => `<a href="${escapeHTML(safeURL(item.href))}">${escapeHTML(item.label)}</a>`)
     .join('');
   const button =
     block.buttonVisible === false
       ? ''
       : action(value('button'), value('href')).replace('class="sbtn"', 'class="sbtn small"');
-  return `<header class="site-nav wrap" data-site-header><a class="wordmark" href="index.html">${brand}</a><div class="site-header-content" id="nav-${escapeHTML(block.id)}" data-header-panel><nav aria-label="Основная навигация">${navigation}</nav>${button}</div><button type="button" class="site-menu-toggle" data-header-control aria-controls="nav-${escapeHTML(block.id)}" aria-expanded="false" aria-label="Открыть меню"><span></span><span></span><span></span></button></header>`;
+  return `<header class="site-nav wrap" data-site-header><a class="wordmark" href="index.html">${brand}</a><div class="site-header-content" id="nav-${escapeHTML(block.id)}" data-header-panel>${navigation ? `<nav aria-label="Основная навигация">${navigation}</nav>` : ''}${button}</div><button type="button" class="site-menu-toggle" data-header-control aria-controls="nav-${escapeHTML(block.id)}" aria-expanded="false" aria-label="Открыть меню"><span></span><span></span><span></span></button></header>`;
 }
 function renderFullImage(block: Block) {
   const src = safeImage(block.values.image ?? '');

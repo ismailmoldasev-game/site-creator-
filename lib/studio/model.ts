@@ -34,6 +34,22 @@ export const slideSchema = z.object({
   href: z.string().max(2000),
   imageSettings: imageSettingsSchema.optional(),
 });
+export const menuItemSchema = z.discriminatedUnion('kind', [
+  z.object({
+    id: z.string().min(1).max(100),
+    kind: z.literal('page'),
+    pageId: z.string().min(1).max(100),
+    label: z.string().max(80).default(''),
+    hidden: z.boolean().default(false),
+  }),
+  z.object({
+    id: z.string().min(1).max(100),
+    kind: z.literal('link'),
+    label: z.string().max(80),
+    href: z.string().max(2000),
+    hidden: z.boolean().default(false),
+  }),
+]);
 export const blockSchema = z.object({
   id: z.string().min(1).max(100),
   type: z.string().max(80),
@@ -50,6 +66,14 @@ export const blockSchema = z.object({
     .object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) })
     .optional(),
   headerMode: z.enum(['fixed', 'reveal', 'normal', 'compact']).optional(),
+  navigation: z
+    .array(menuItemSchema)
+    .max(50)
+    .refine(
+      (items) => new Set(items.map((item) => item.id)).size === items.length,
+      'Пункты меню должны иметь разные ID',
+    )
+    .optional(),
   anchor: z
     .string()
     .regex(/^(?:[a-zA-Z][a-zA-Z0-9_-]{0,79})?$/)
@@ -145,6 +169,18 @@ export const projectSchema = z
       )
     )
       ctx.addIssue({ code: 'custom', message: 'В проекте есть блок без шаблона' });
+  })
+  .transform((project) => {
+    // Freeze legacy automatic menus once, before any page can be added or copied.
+    for (const block of [
+      ...project.shared.header,
+      ...project.shared.footer,
+      ...project.pages.flatMap((page) => page.blocks),
+    ]) {
+      if (block.type === 'header' && block.navigation === undefined)
+        block.navigation = defaultHeaderNavigation(project.pages);
+    }
+    return project;
   });
 export type Project = z.infer<typeof projectSchema>;
 export type Block = z.infer<typeof blockSchema>;
@@ -153,6 +189,16 @@ export type Page = z.infer<typeof pageSchema>;
 export type ImageSettings = z.infer<typeof imageSettingsSchema>;
 export type FeatureCard = z.infer<typeof featureCardSchema>;
 export type Slide = z.infer<typeof slideSchema>;
+export type MenuItem = z.infer<typeof menuItemSchema>;
+export function defaultHeaderNavigation(pages: { id: string }[]): MenuItem[] {
+  return pages.map((page, index) => ({
+    id: 'page-' + index,
+    kind: 'page',
+    pageId: page.id,
+    label: '',
+    hidden: false,
+  }));
+}
 export function uid(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   const a = crypto.getRandomValues(new Uint8Array(16));
@@ -403,6 +449,7 @@ export function makeBlock(type: string, library: Definition[] = []): Block {
     values: Object.fromEntries(d.fields.map((f) => [f.key, f.default])),
     hidden: false,
     padding: 0,
+    ...(type === 'header' ? { navigation: [] } : {}),
     ...(type === 'full-image'
       ? {
           buttonVisible: false,
@@ -413,6 +460,9 @@ export function makeBlock(type: string, library: Definition[] = []): Block {
   };
 }
 export function freshProject(): Project {
+  const homeId = uid();
+  const header = makeBlock('header');
+  header.navigation = defaultHeaderNavigation([{ id: homeId }]);
   return {
     schemaVersion: 1,
     name: 'Мой первый сайт',
@@ -431,7 +481,7 @@ export function freshProject(): Project {
     },
     pages: [
       {
-        id: uid(),
+        id: homeId,
         name: 'Главная',
         slug: '',
         title: 'Точка роста — ваши новые возможности',
@@ -439,7 +489,7 @@ export function freshProject(): Project {
         blocks: ['hero', 'text', 'features', 'contact'].map((t) => makeBlock(t)),
       },
     ],
-    shared: { header: [makeBlock('header')], footer: [makeBlock('footer')] },
+    shared: { header: [header], footer: [makeBlock('footer')] },
     library: [],
     github: { repo: '', branch: 'gh-pages', domain: '' },
     ai: { model: 'gpt-4.1-mini' },

@@ -1,7 +1,8 @@
 'use client';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
-import type { Block, Definition, Page, Project } from '@/lib/studio/model';
+import type { Block, Definition, MenuItem, Page, Project } from '@/lib/studio/model';
 import { builtin, uid } from '@/lib/studio/model';
+import { headerMenu } from '@/lib/studio/header-navigation';
 import {
   blockAnchor,
   blockSlides,
@@ -91,12 +92,14 @@ function ItemTools({
   label,
   move,
   remove,
+  minimum = 1,
 }: {
   index: number;
   total: number;
   label: string;
   move: (delta: number) => void;
   remove: () => void;
+  minimum?: number;
 }) {
   return (
     <div className="repeat-tools">
@@ -122,12 +125,191 @@ function ItemTools({
         type="button"
         className="icon-btn danger"
         aria-label={'Удалить ' + label.toLowerCase()}
-        disabled={total === 1}
+        disabled={total <= minimum}
         onClick={remove}
       >
         <Trash2 size={14} />
       </button>
     </div>
+  );
+}
+
+function HeaderNavigationSettings({
+  block,
+  project,
+  page,
+  editBlock,
+}: {
+  block: Block;
+  project: Project;
+  page: Page;
+  editBlock: (fn: (block: Block) => void) => void;
+}) {
+  const items = headerMenu(block, project);
+  const available = project.pages.filter(
+    (pg) => !items.some((item) => item.kind === 'page' && item.pageId === pg.id),
+  );
+  const change = (fn: (items: MenuItem[]) => void) =>
+    editBlock((b) => {
+      b.navigation = headerMenu(b, project);
+      fn(b.navigation);
+    });
+  return (
+    <section className="content-settings-group header-menu-settings" aria-label="Пункты меню шапки">
+      <h4>Пункты меню</h4>
+      <small>
+        Выберите, что показывать в шапке. Новые страницы добавляются сюда вручную.
+        {project.shared.header.some((b) => b.id === block.id)
+          ? ' Настройка общая для всех страниц.'
+          : ''}
+      </small>
+      {items.length === 0 && (
+        <p className="small-note">
+          В меню пока нет пунктов. Логотип и кнопка шапки остаются на месте.
+        </p>
+      )}
+      {items.map((item, index) => {
+        const target =
+          item.kind === 'page' ? project.pages.find((pg) => pg.id === item.pageId) : undefined;
+        const title =
+          item.label.trim() ||
+          target?.name ||
+          (item.kind === 'page' ? 'Страница удалена' : 'Новая ссылка');
+        return (
+          <details className="repeat-item" key={item.id}>
+            <summary>
+              {index + 1}. {title}
+              {item.hidden ? ' · скрыт' : ''}
+            </summary>
+            <div className="repeat-item-body">
+              <ItemTools
+                index={index}
+                total={items.length}
+                minimum={0}
+                label={'Пункт меню ' + (index + 1)}
+                move={(delta) =>
+                  editBlock((b) => {
+                    b.navigation = moveItem(headerMenu(b, project), index, delta);
+                  })
+                }
+                remove={() =>
+                  change((list) => {
+                    list.splice(index, 1);
+                  })
+                }
+              />
+              <label className="check-setting">
+                <input
+                  type="checkbox"
+                  checked={!item.hidden}
+                  onChange={(e) =>
+                    change((list) => {
+                      list[index].hidden = !e.target.checked;
+                    })
+                  }
+                />
+                Показывать пункт в меню
+              </label>
+              <TextField
+                label="Название в меню"
+                value={item.label}
+                placeholder={target?.name || 'Например: О нас'}
+                hint={
+                  item.kind === 'page'
+                    ? 'Оставьте пустым, чтобы использовать название страницы.'
+                    : undefined
+                }
+                onChange={(value) =>
+                  change((list) => {
+                    list[index].label = value.slice(0, 80);
+                  })
+                }
+              />
+              {item.kind === 'page' ? (
+                <Field
+                  label="Страница для перехода"
+                  hint={
+                    !target
+                      ? 'Эта страница удалена. Пункт скрыт на сайте, пока вы не выберете другую.'
+                      : 'Ссылка обновится автоматически при смене адреса страницы.'
+                  }
+                >
+                  <select
+                    value={item.pageId}
+                    onChange={(e) =>
+                      change((list) => {
+                        const current = list[index];
+                        if (current.kind === 'page') current.pageId = e.target.value;
+                      })
+                    }
+                  >
+                    {!target && (
+                      <option value={item.pageId} disabled>
+                        Страница удалена
+                      </option>
+                    )}
+                    {project.pages.map((pg) => (
+                      <option key={pg.id} value={pg.id}>
+                        {pg.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : (
+                <LinkField
+                  label="Адрес пункта меню"
+                  value={item.href}
+                  project={project}
+                  page={page}
+                  onChange={(value) =>
+                    change((list) => {
+                      const current = list[index];
+                      if (current.kind === 'link') current.href = value.slice(0, 2000);
+                    })
+                  }
+                />
+              )}
+            </div>
+          </details>
+        );
+      })}
+      <Field label="Добавить страницу в меню">
+        <select
+          value=""
+          disabled={available.length === 0 || items.length >= 50}
+          onChange={(e) => {
+            const pageId = e.target.value;
+            if (pageId)
+              change((list) => {
+                list.push({ id: uid(), kind: 'page', pageId, label: '', hidden: false });
+              });
+          }}
+        >
+          <option value="">
+            {available.length ? 'Выберите страницу…' : 'Все страницы уже в списке'}
+          </option>
+          {available.map((pg) => (
+            <option key={pg.id} value={pg.id}>
+              {pg.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <button
+        type="button"
+        className="btn compact repeat-add"
+        disabled={items.length >= 50}
+        onClick={() =>
+          change((list) => {
+            list.push({ id: uid(), kind: 'link', label: 'Новая ссылка', href: '#', hidden: false });
+          })
+        }
+      >
+        <Plus size={14} />
+        Добавить свою ссылку
+      </button>
+      {items.length >= 50 && <small>Можно добавить до 50 пунктов меню.</small>}
+    </section>
   );
 }
 
@@ -157,24 +339,32 @@ export default function BlockContentSettings({
   return (
     <>
       {block.type === 'header' && (
-        <Field
-          label="Поведение шапки"
-          hint="В режиме с тремя полосками меню раскрывается при наведении мыши или нажатии и сворачивается при прокрутке."
-        >
-          <select
-            value={block.headerMode ?? 'normal'}
-            onChange={(e) =>
-              editBlock((b) => {
-                b.headerMode = e.target.value as Block['headerMode'];
-              })
-            }
+        <>
+          <Field
+            label="Поведение шапки"
+            hint="В режиме с тремя полосками меню раскрывается при наведении мыши или нажатии и сворачивается при прокрутке."
           >
-            <option value="fixed">1. Закреплена — всегда сверху</option>
-            <option value="reveal">2. Появляется при прокрутке вверх</option>
-            <option value="normal">3. Свободная — вместе со страницей</option>
-            <option value="compact">4. Сворачивается в три полоски</option>
-          </select>
-        </Field>
+            <select
+              value={block.headerMode ?? 'normal'}
+              onChange={(e) =>
+                editBlock((b) => {
+                  b.headerMode = e.target.value as Block['headerMode'];
+                })
+              }
+            >
+              <option value="fixed">1. Закреплена — всегда сверху</option>
+              <option value="reveal">2. Появляется при прокрутке вверх</option>
+              <option value="normal">3. Свободная — вместе со страницей</option>
+              <option value="compact">4. Сворачивается в три полоски</option>
+            </select>
+          </Field>
+          <HeaderNavigationSettings
+            block={block}
+            project={project}
+            page={page}
+            editBlock={editBlock}
+          />
+        </>
       )}
       {['hero', 'image-text'].includes(block.type) && (
         <Field label="Порядок текста и изображения">

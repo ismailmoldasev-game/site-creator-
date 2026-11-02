@@ -788,7 +788,10 @@ export default function Editor({
               value={pageName}
               onChange={setPageName}
             />
-            <p className="small-note">Общие шапка и подвал появятся автоматически.</p>
+            <p className="small-note">
+              Общие шапка и подвал появятся автоматически. Добавить страницу в меню можно в
+              настройках шапки.
+            </p>
             <button
               className="btn primary"
               disabled={!pageName.trim()}
