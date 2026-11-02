@@ -76,8 +76,9 @@ test('export contains only visible blocks, safe CSP, page metadata, code and dom
   p.pages[0].description = 'Описание <script>';
   p.github.domain = 'example.kz';
   const html = renderPage(p, p.pages[0]);
-  assert.ok(html.includes("script-src 'none'"));
-  assert.ok(!html.includes('<script nonce='));
+  assert.ok(html.includes("script-src 'nonce-"));
+  assert.ok(html.includes('<script nonce='));
+  assert.ok(!html.includes('unsafe-eval'));
   assert.ok(!html.includes(p.pages[0].blocks[1].values.title));
   assert.ok(html.includes('Описание &lt;script&gt;'));
   assert.ok(!html.includes("studio:'select"));

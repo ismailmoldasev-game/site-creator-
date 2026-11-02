@@ -25,7 +25,7 @@ export function editorPreviewScript(preview: EditorPreview) {
   var restoring=true, interacted=false, frame=0;
   function blocks(){return Array.from(document.querySelectorAll('[data-block]'))}
   function position(){
-    var block=blocks().find(function(node){return node.getBoundingClientRect().bottom>0});
+    var block=blocks().find(function(node){return node.dataset.previewFloating!=='true'&&node.getBoundingClientRect().bottom>0});
     return {y:window.scrollY,blockId:block?block.dataset.block:'',offset:block?block.getBoundingClientRect().top:0};
   }
   function send(kind,extra){parent.postMessage(Object.assign({studio:kind,previewId:preview.id,position:position()},extra||{}),'*')}
@@ -43,7 +43,7 @@ export function editorPreviewScript(preview: EditorPreview) {
   function userInteraction(){interacted=true;restoring=false}
   ['wheel','touchstart','pointerdown','keydown'].forEach(function(kind){window.addEventListener(kind,userInteraction,{passive:true})});
   document.addEventListener('click',function(e){
-    if(e.target.closest('[data-slideshow-control]'))return;
+    if(e.target.closest('[data-slideshow-control],[data-header-control]'))return;
     e.preventDefault();
     var block=e.target.closest('[data-block]');
     if(block)send('select',{id:block.dataset.block});

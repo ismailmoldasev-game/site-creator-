@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import { runInNewContext } from 'node:vm';
 import { editorPreviewScript, readPreviewPosition } from '../lib/studio/editor-preview';
 
-function previewRuntime({ blockId = 'target', offset = -120, y = 1120 } = {}) {
+function previewRuntime({
+  blockId = 'target',
+  offset = -120,
+  y = 1120,
+  floatingHeader = false,
+} = {}) {
   const events: Record<string, (event?: any) => void> = {};
   const messages: any[] = [];
   const scrolls: { top: number; behavior: string }[] = [];
@@ -44,7 +49,17 @@ function previewRuntime({ blockId = 'target', offset = -120, y = 1120 } = {}) {
       parent,
       document: {
         body: {},
-        querySelectorAll: () => [block],
+        querySelectorAll: () =>
+          floatingHeader
+            ? [
+                {
+                  ...block,
+                  dataset: { block: 'sticky-header', previewFloating: 'true' },
+                  getBoundingClientRect: () => ({ top: 0, bottom: 76 }),
+                },
+                block,
+              ]
+            : [block],
         addEventListener(name: string, callback: () => void) {
           events[name] = callback;
         },
@@ -95,7 +110,7 @@ test('editing restores the same point in a block instantly, including late image
 });
 
 test('user scrolling is reported and is never undone by load or resize callbacks', () => {
-  const runtime = previewRuntime();
+  const runtime = previewRuntime({ floatingHeader: true });
   runtime.flushFrames();
   runtime.events.wheel();
   runtime.win.scrollY = 1400;

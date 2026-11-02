@@ -57,6 +57,7 @@ const blockIcons: Record<string, typeof Layers> = {
   text: Type,
   features: Layers,
   'image-text': ImageIcon,
+  'full-image': ImageIcon,
   slideshow: ImageIcon,
   quote: Quote,
   faq: HelpCircle,
@@ -661,20 +662,22 @@ export default function Editor({
                     })
                   }
                 />
-                <Field label={'Отступ сверху и снизу: ' + block.padding + ' px'}>
-                  <input
-                    type="range"
-                    min="0"
-                    max="160"
-                    step="4"
-                    value={block.padding}
-                    onChange={(e) =>
-                      editBlock((b) => {
-                        b.padding = +e.target.value;
-                      })
-                    }
-                  />
-                </Field>
+                {block.type !== 'full-image' && (
+                  <Field label={'Отступ сверху и снизу: ' + block.padding + ' px'}>
+                    <input
+                      type="range"
+                      min="0"
+                      max="160"
+                      step="4"
+                      value={block.padding}
+                      onChange={(e) =>
+                        editBlock((b) => {
+                          b.padding = +e.target.value;
+                        })
+                      }
+                    />
+                  </Field>
+                )}
                 <Field label="Фон секции">
                   <div className="color-field">
                     <input

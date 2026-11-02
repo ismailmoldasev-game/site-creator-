@@ -58,6 +58,7 @@ export function ImageField({
   notify,
   settings,
   onSettingsChange,
+  fixedFrame = false,
 }: {
   label: string;
   value: string;
@@ -65,6 +66,7 @@ export function ImageField({
   notify: (s: string) => void;
   settings?: ImageSettings;
   onSettingsChange?: (settings: ImageSettings) => void;
+  fixedFrame?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const options = settings ?? defaultImageSettings;
@@ -122,10 +124,10 @@ export function ImageField({
             >
               <option value="contain">Целиком — без обрезки</option>
               <option value="cover">Заполнить рамку</option>
-              <option value="original">Исходные пропорции</option>
+              {!fixedFrame && <option value="original">Исходные пропорции</option>}
             </select>
           </Field>
-          {options.fit !== 'original' && (
+          {!fixedFrame && options.fit !== 'original' && (
             <Field label="Пропорции рамки">
               <select
                 value={options.ratio}
@@ -166,7 +168,9 @@ export function ImageField({
           <small>
             {options.fit === 'cover'
               ? 'Выберите, какую часть фотографии оставить в кадре.'
-              : 'Фотография сохраняется целиком. Рамку можно изменить в любой момент.'}
+              : fixedFrame
+                ? 'Изображение целиком в рамке размером с экран.'
+                : 'Фотография сохраняется целиком. Рамку можно изменить в любой момент.'}
           </small>
         </details>
       )}

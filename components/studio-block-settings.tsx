@@ -9,6 +9,7 @@ import {
   moveItem,
   newSlide,
   pageBlocks,
+  defaultImageSettings,
 } from '@/lib/studio/block-content';
 import { Field, ImageField, TextField } from './studio-controls';
 
@@ -155,6 +156,26 @@ export default function BlockContentSettings({
   const slides = block.type === 'slideshow' ? blockSlides(block) : [];
   return (
     <>
+      {block.type === 'header' && (
+        <Field
+          label="Поведение шапки"
+          hint="В режиме с тремя полосками меню раскрывается при наведении мыши или нажатии и сворачивается при прокрутке."
+        >
+          <select
+            value={block.headerMode ?? 'normal'}
+            onChange={(e) =>
+              editBlock((b) => {
+                b.headerMode = e.target.value as Block['headerMode'];
+              })
+            }
+          >
+            <option value="fixed">1. Закреплена — всегда сверху</option>
+            <option value="reveal">2. Появляется при прокрутке вверх</option>
+            <option value="normal">3. Свободная — вместе со страницей</option>
+            <option value="compact">4. Сворачивается в три полоски</option>
+          </select>
+        </Field>
+      )}
       {['hero', 'image-text'].includes(block.type) && (
         <Field label="Порядок текста и изображения">
           <select
@@ -173,7 +194,7 @@ export default function BlockContentSettings({
       {definition.fields
         .filter(
           (f) =>
-            !(block.type === 'hero' && ['button', 'href'].includes(f.key)) &&
+            !(['hero', 'full-image'].includes(block.type) && ['button', 'href'].includes(f.key)) &&
             !(block.type === 'features' && !['eyebrow', 'title'].includes(f.key)),
         )
         .map((f) =>
@@ -183,7 +204,13 @@ export default function BlockContentSettings({
               label={f.label}
               value={value(f.key)}
               onChange={(v) => setValue(f.key, v)}
-              settings={block.images?.[f.key]}
+              settings={
+                block.images?.[f.key] ??
+                (block.type === 'full-image'
+                  ? { ...defaultImageSettings, fit: 'cover' }
+                  : undefined)
+              }
+              fixedFrame={block.type === 'full-image'}
               onSettingsChange={(settings) =>
                 editBlock((b) => {
                   b.images = { ...b.images, [f.key]: settings };
@@ -215,12 +242,16 @@ export default function BlockContentSettings({
             />
           ),
         )}
-      {block.type === 'hero' && (
+      {['hero', 'full-image'].includes(block.type) && (
         <div className="content-settings-group">
           <label className="check-setting">
             <input
               type="checkbox"
-              checked={block.buttonVisible !== false}
+              checked={
+                block.type === 'full-image'
+                  ? block.buttonVisible === true
+                  : block.buttonVisible !== false
+              }
               onChange={(e) =>
                 editBlock((b) => {
                   b.buttonVisible = e.target.checked;
@@ -229,7 +260,9 @@ export default function BlockContentSettings({
             />
             Показывать кнопку
           </label>
-          {block.buttonVisible !== false && (
+          {(block.type === 'full-image'
+            ? block.buttonVisible === true
+            : block.buttonVisible !== false) && (
             <>
               <TextField
                 label="Текст кнопки"
@@ -243,6 +276,53 @@ export default function BlockContentSettings({
                 project={project}
                 page={page}
               />
+              {block.type === 'full-image' && (
+                <>
+                  <Field
+                    label={'Кнопка по горизонтали: ' + (block.buttonPosition?.x ?? 50) + '%'}
+                    hint="0 — слева, 100 — справа."
+                  >
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={block.buttonPosition?.x ?? 50}
+                      onChange={(e) =>
+                        editBlock((b) => {
+                          b.buttonPosition = { x: +e.target.value, y: b.buttonPosition?.y ?? 80 };
+                        })
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label={'Кнопка по вертикали: ' + (block.buttonPosition?.y ?? 80) + '%'}
+                    hint="0 — сверху, 100 — снизу."
+                  >
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={block.buttonPosition?.y ?? 80}
+                      onChange={(e) =>
+                        editBlock((b) => {
+                          b.buttonPosition = { x: b.buttonPosition?.x ?? 50, y: +e.target.value };
+                        })
+                      }
+                    />
+                  </Field>
+                  <button
+                    type="button"
+                    className="btn compact"
+                    onClick={() =>
+                      editBlock((b) => {
+                        b.buttonPosition = { x: 50, y: 50 };
+                      })
+                    }
+                  >
+                    Кнопка по центру
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>

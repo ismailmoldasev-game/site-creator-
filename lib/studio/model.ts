@@ -46,6 +46,10 @@ export const blockSchema = z.object({
     .optional(),
   layout: z.enum(['text-first', 'image-first']).optional(),
   buttonVisible: z.boolean().optional(),
+  buttonPosition: z
+    .object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) })
+    .optional(),
+  headerMode: z.enum(['fixed', 'reveal', 'normal', 'compact']).optional(),
   anchor: z
     .string()
     .regex(/^(?:[a-zA-Z][a-zA-Z0-9_-]{0,79})?$/)
@@ -171,7 +175,7 @@ export const builtin: Definition[] = [
   {
     id: 'header',
     name: 'Шапка сайта',
-    description: 'Название, навигация и кнопка действия',
+    description: 'Навигация, кнопка и четыре режима поведения при прокрутке',
     category: 'Основные',
     fields: [
       { key: 'name', label: 'Название', type: 'text', default: 'Точка роста' },
@@ -179,6 +183,19 @@ export const builtin: Definition[] = [
       { key: 'href', label: 'Ссылка кнопки', type: 'url', default: '#contacts' },
     ],
     html: '<header class="site-nav wrap"><a class="wordmark" href="index.html">{{name}}</a><nav>{{navigation}}</nav><a class="sbtn small" href="{{href}}">{{button}}</a></header>',
+  },
+  {
+    id: 'full-image',
+    name: 'Изображение на весь экран',
+    description: 'Без отступов. Кнопка по желанию с настройкой положения',
+    category: 'Основные',
+    fields: [
+      { key: 'image', label: 'Изображение', type: 'image', default: '' },
+      { key: 'imageAlt', label: 'Описание изображения', type: 'text', default: '' },
+      { key: 'button', label: 'Текст кнопки', type: 'text', default: 'Подробнее' },
+      { key: 'href', label: 'Ссылка кнопки', type: 'url', default: '#about' },
+    ],
+    html: '<section class="full-image"><img src="{{image}}" alt="{{imageAlt}}"></section>',
   },
   {
     id: 'hero',
@@ -386,6 +403,13 @@ export function makeBlock(type: string, library: Definition[] = []): Block {
     values: Object.fromEntries(d.fields.map((f) => [f.key, f.default])),
     hidden: false,
     padding: 0,
+    ...(type === 'full-image'
+      ? {
+          buttonVisible: false,
+          buttonPosition: { x: 50, y: 80 },
+          images: { image: { fit: 'cover' as const, x: 50, y: 50, ratio: 'auto' as const } },
+        }
+      : {}),
   };
 }
 export function freshProject(): Project {
