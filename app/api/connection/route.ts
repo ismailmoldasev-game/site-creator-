@@ -1,3 +1,5 @@
+import { credentialKey } from '@/lib/studio/accounts';
+import { requireAccount } from '@/lib/studio/account-server';
 import {
   readBody,
   putSecret,
@@ -8,15 +10,17 @@ import {
   APIError,
 } from '@/lib/studio/server';
 export const dynamic = 'force-dynamic';
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    return Response.json(await connectionState());
+    const account = await requireAccount(req);
+    return Response.json(await connectionState(account));
   } catch (e) {
     return replyError(e);
   }
 }
 export async function POST(req: Request) {
   try {
+    const account = await requireAccount(req);
     const b = await readBody(req);
     if (
       !['github', 'openai'].includes(b.provider) ||
@@ -36,21 +40,22 @@ export async function POST(req: Request) {
       });
       if (!r.ok) throw new APIError('OpenAI не принял ключ. Проверьте его в кабинете API.');
     }
-    await putSecret(b.provider, b.key);
-    return Response.json({ ...(await connectionState()), login });
+    await putSecret(account, b.provider, b.key);
+    return Response.json({ ...(await connectionState(account)), login });
   } catch (e) {
     return replyError(e);
   }
 }
 export async function DELETE(req: Request) {
   try {
+    const account = await requireAccount(req);
     const b = await readBody(req);
     if (!['github', 'openai'].includes(b.provider)) throw new APIError('Неизвестное подключение');
     await database()
       .prepare('DELETE FROM studio_credentials WHERE provider=?')
-      .bind(b.provider)
+      .bind(credentialKey(account, b.provider))
       .run();
-    return Response.json(await connectionState());
+    return Response.json(await connectionState(account));
   } catch (e) {
     return replyError(e);
   }

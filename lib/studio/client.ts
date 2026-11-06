@@ -1,4 +1,8 @@
 import type { Project } from './model';
+let accountId = '';
+export function setAPIAccount(id: string) {
+  accountId = id;
+}
 export async function api<T = any>(
   path: string,
   body?: unknown,
@@ -6,10 +10,20 @@ export async function api<T = any>(
 ): Promise<T> {
   const r = await fetch('/api/' + path, {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    headers: {
+      'X-Studio-Account': accountId,
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    },
+    cache: 'no-store',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  if (!r.headers.get('content-type')?.includes('application/json')) {
+    window.dispatchEvent(new Event('studio-session-ended'));
+    throw new Error('Войдите снова, чтобы продолжить. Локальная копия правок сохранена.');
+  }
   const d: any = await r.json();
+  if (d.code === 'AUTH_REQUIRED' || d.code === 'ACCOUNT_CHANGED')
+    window.dispatchEvent(new Event('studio-session-ended'));
   if (!r.ok) throw new Error(d.error || 'Не удалось выполнить запрос');
   return d;
 }

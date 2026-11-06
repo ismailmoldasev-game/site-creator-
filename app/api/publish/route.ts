@@ -1,3 +1,4 @@
+import { requireAccount } from '@/lib/studio/account-server';
 import {
   database,
   readBody,
@@ -8,19 +9,20 @@ import {
   replyError,
   APIError,
 } from '@/lib/studio/server';
-import { projectFiles } from '@/lib/studio/render';
+import { publicSiteFiles } from '@/lib/studio/render';
 export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
+    const account = await requireAccount(req);
     await readBody(req);
-    const { project: p } = await readProject();
+    const { project: p } = await readProject(account);
     if (!p.github.repo) throw new APIError('Укажите репозиторий GitHub в настройках.');
-    const token = await getSecret('github');
+    const token = await getSecret(account, 'github');
     if (!token) throw new APIError('Подключите токен GitHub в настройках.');
     const sha = await commitFiles(
       p.github.repo,
       p.github.branch,
-      projectFiles(p),
+      publicSiteFiles(p),
       token,
       'studio: publish website',
       true,
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
         `https://${p.github.repo.split('/')[0]}.github.io/${p.github.repo.split('/')[1]}/`;
     await database()
       .prepare(
-        'INSERT INTO studio_versions (id,document,created_at,"commit",url,kind) VALUES (?,?,?,?,?,?)',
+        'INSERT INTO studio_versions (id,document,created_at,"commit",url,kind,project_id) VALUES (?,?,?,?,?,?,?)',
       )
       .bind(
         crypto.randomUUID(),
@@ -54,6 +56,7 @@ export async function POST(req: Request) {
         sha,
         url,
         'publication',
+        account.projectId,
       )
       .run();
     return Response.json({ sha, url, status: 'building' });
@@ -61,10 +64,11 @@ export async function POST(req: Request) {
     return replyError(e);
   }
 }
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const { project: p } = await readProject();
-    const token = await getSecret('github');
+    const account = await requireAccount(req);
+    const { project: p } = await readProject(account);
+    const token = await getSecret(account, 'github');
     if (!token || !p.github.repo) return Response.json({ status: 'disconnected' });
     const pages = await githubFetch(`/repos/${p.github.repo}/pages`, token);
     const build = await githubFetch(`/repos/${p.github.repo}/pages/builds/latest`, token);

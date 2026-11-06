@@ -32,6 +32,8 @@ import { useStudioNavigation } from '@/lib/studio/use-navigation';
 import { freshProject, makeBlock } from '@/lib/studio/model';
 import { renderPage } from '@/lib/studio/render';
 import { api } from '@/lib/studio/client';
+import type { StudioAccount } from '@/lib/studio/accounts';
+import { chatGPTSignInPath, chatGPTSignOutPath } from '@/lib/studio/auth-paths';
 import Settings from './studio-settings';
 import SiteFrame from './studio-preview';
 import Brand from './studio-brand';
@@ -45,8 +47,8 @@ const navigation = [
   { id: 'ai', name: 'ИИ-блоки', Icon: Sparkles },
   { id: 'publish', name: 'Публикация', Icon: Globe },
 ];
-export default function Studio() {
-  const s = useStudio(),
+export default function Studio({ account }: { account: StudioAccount }) {
+  const s = useStudio(account),
     [navOpen, setNavOpen] = useState(false),
     [templates, setTemplates] = useState(false),
     [template, setTemplate] = useState('starter'),
@@ -62,6 +64,28 @@ export default function Studio() {
   }
   const p = s.project;
   const page = p?.pages.find((pg) => pg.id === pageId) || p?.pages[0];
+  if (s.sessionEnded)
+    return (
+      <main className="account-welcome">
+        <div className="account-card">
+          <h1>Войдите снова</h1>
+          <p>
+            Сессия завершилась или аккаунт изменился в другой вкладке. Редактирование
+            приостановлено. Несохранённые правки остались в локальной копии вашего аккаунта.
+          </p>
+          <a
+            className="btn primary"
+            href={chatGPTSignInPath(window.location.pathname + window.location.search)}
+            target="_top"
+          >
+            Продолжить с ChatGPT
+          </a>
+          <button className="btn" onClick={s.backup}>
+            Скачать мои правки
+          </button>
+        </div>
+      </main>
+    );
   if (!p)
     return (
       <div className="loading-screen">
@@ -133,13 +157,31 @@ export default function Studio() {
             <ArrowUpRight size={13} />
           </button>
           <div className="profile">
-            <span className="profile-avatar">И</span>
+            <span className="profile-avatar">{account.displayName.slice(0, 1).toUpperCase()}</span>
             <div>
-              <strong>Моё пространство</strong>
+              <strong title={account.email}>{account.displayName}</strong>
               <small>Личное · только для вас</small>
             </div>
             <ShieldCheck size={15} />
           </div>
+          <a
+            className="help-link account-signout"
+            href={chatGPTSignOutPath('/')}
+            target="_top"
+            onClick={async (event) => {
+              event.preventDefault();
+              s.setLocked(true);
+              try {
+                await s.flush();
+                window.top!.location.href = chatGPTSignOutPath('/');
+              } catch {
+                s.notify('Перед выходом сохраните правки или скачайте резервную копию.');
+                s.setLocked(false);
+              }
+            }}
+          >
+            Выйти из аккаунта
+          </a>
         </div>
       </aside>
       {navOpen && <div className="nav-scrim" onClick={() => setNavOpen(false)} />}
@@ -242,7 +284,7 @@ export default function Studio() {
               className="text-btn"
               onClick={() => {
                 s.setRecovery(null);
-                localStorage.removeItem('studio-recovery');
+                localStorage.removeItem(s.recoveryKey);
               }}
             >
               Использовать серверную версию

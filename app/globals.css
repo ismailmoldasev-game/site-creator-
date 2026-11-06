@@ -4365,3 +4365,95 @@ input[hidden] {
   min-height: 0;
   flex: 1;
 }
+
+.account-welcome {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 48px 22px;
+  background: var(--app-bg);
+}
+.account-card {
+  width: 100%;
+  max-width: 520px;
+  padding: clamp(24px, 5vw, 48px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 18px 60px #173c2910;
+}
+.account-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 29px;
+  font-weight: 650;
+  letter-spacing: -1.5px;
+  margin-bottom: 44px;
+}
+.account-brand span {
+  font-weight: 350;
+  margin-left: -12px;
+}
+.account-eyebrow {
+  color: var(--green);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  font-weight: 650;
+}
+.account-card h1 {
+  margin: 14px 0 20px;
+  font-size: clamp(34px, 7vw, 48px);
+  line-height: 1.1;
+  letter-spacing: -1.8px;
+}
+.account-lead {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+.account-enter {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 50px;
+}
+.account-hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 15px 0 28px;
+}
+.account-benefits {
+  list-style: none;
+  padding: 24px 0 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.account-benefits li {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+  font-size: 12px;
+}
+.account-benefits li span {
+  color: var(--green);
+}
+.account-error {
+  color: #9f302d;
+  margin-bottom: 20px;
+}
+.account-signout {
+  margin-top: 10px;
+}
+.profile > div {
+  min-width: 0;
+}
+.profile strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,3 +1,4 @@
+import { requireAccount } from '@/lib/studio/account-server';
 import {
   readBody,
   readProject,
@@ -9,9 +10,10 @@ import {
 export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
+    const account = await requireAccount(req);
     await readBody(req);
-    const { project: p } = await readProject();
-    const token = await getSecret('github');
+    const { project: p } = await readProject(account);
+    const token = await getSecret(account, 'github');
     if (!token || !p.github.repo)
       throw new APIError('Подключите GitHub и укажите репозиторий в настройках.');
     const files = [

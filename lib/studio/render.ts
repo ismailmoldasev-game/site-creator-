@@ -227,3 +227,13 @@ export function projectFiles(p: Project) {
     ...(p.github.domain ? [{ path: 'CNAME', content: p.github.domain + '\n' }] : []),
   ];
 }
+
+/** Only visitor-facing files belong in a public publication. Draft schemas stay private. */
+export function publicSiteFiles(p: Project) {
+  return projectFiles(p).filter(
+    (file) =>
+      (file.path.endsWith('.html') && !file.path.startsWith('blocks/')) ||
+      file.path === '.nojekyll' ||
+      file.path === 'CNAME',
+  );
+}

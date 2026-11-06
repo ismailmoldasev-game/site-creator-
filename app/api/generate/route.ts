@@ -1,3 +1,4 @@
+import { requireAccount } from '@/lib/studio/account-server';
 import {
   readBody,
   readProject,
@@ -12,13 +13,14 @@ import { validateDefinitionHTML } from '@/lib/studio/render';
 export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
+    const account = await requireAccount(req);
     const b = await readBody(req);
     if (typeof b.prompt !== 'string' || b.prompt.trim().length < 10 || b.prompt.length > 5000)
       throw new APIError('Опишите блок: от 10 до 5000 символов.');
-    const { project: p, revision } = await readProject();
+    const { project: p, revision } = await readProject(account);
     if (b.revision !== revision)
       throw new APIError('Проект изменился. Сначала сохраните актуальные правки.', 409);
-    const key = await getSecret('openai');
+    const key = await getSecret(account, 'openai');
     if (!key) throw new APIError('Подключите OpenAI в настройках → Подключения.', 422);
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -65,10 +67,10 @@ export async function POST(req: Request) {
     if (keys.size !== def.fields.length)
       throw new APIError('ИИ создал повторяющиеся поля. Повторите генерацию.');
     const next = { ...p, library: [...p.library, def] };
-    const saved = await writeProject(next, revision);
+    const saved = await writeProject(account, next, revision);
     let synced = false;
     let syncError = '';
-    const gh = await getSecret('github');
+    const gh = await getSecret(account, 'github');
     if (gh && p.github.repo) {
       try {
         await commitFiles(

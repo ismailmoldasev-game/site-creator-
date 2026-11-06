@@ -1,8 +1,10 @@
+import { requireAccount } from '@/lib/studio/account-server';
 import { readProject, replyError, APIError } from '@/lib/studio/server';
 export const dynamic = 'force-dynamic';
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const { project: p } = await readProject();
+    const account = await requireAccount(req);
+    const { project: p } = await readProject(account);
     if (!p.github.domain || !p.github.repo)
       throw new APIError('Сначала укажите домен и репозиторий.');
     const expected = p.github.repo.split('/')[0].toLowerCase() + '.github.io';

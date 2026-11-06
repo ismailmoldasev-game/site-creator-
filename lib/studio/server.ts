@@ -1,26 +1,29 @@
 import { env } from 'cloudflare:workers';
+import { APIError } from './errors';
+export { APIError } from './errors';
+import { credentialKey, type StudioAccount } from './accounts';
 import { freshProject, projectSchema, type Project } from './model';
 import { validateDefinitionHTML } from './render';
 export const database = () => {
   if (!env.DB) throw new Error('Хранилище проекта не подключено');
   return env.DB;
 };
-export async function readProject() {
+export async function readProject(account: StudioAccount) {
   const db = database();
   let row = await db
     .prepare('SELECT document,revision,updated_at FROM studio_projects WHERE id=?')
-    .bind('main')
+    .bind(account.projectId)
     .first<{ document: string; revision: number; updated_at: string }>();
   if (!row) {
     await db
       .prepare(
         'INSERT OR IGNORE INTO studio_projects (id,document,revision,updated_at) VALUES (?,?,?,?)',
       )
-      .bind('main', JSON.stringify(freshProject()), 1, new Date().toISOString())
+      .bind(account.projectId, JSON.stringify(freshProject()), 1, new Date().toISOString())
       .run();
     row = await db
       .prepare('SELECT document,revision,updated_at FROM studio_projects WHERE id=?')
-      .bind('main')
+      .bind(account.projectId)
       .first();
   }
   if (!row) throw new Error('Не удалось открыть проект');
@@ -30,7 +33,7 @@ export async function readProject() {
     updatedAt: row.updated_at,
   };
 }
-export async function writeProject(project: Project, revision: number) {
+export async function writeProject(account: StudioAccount, project: Project, revision: number) {
   const p = projectSchema.parse(project);
   p.library.forEach((definition) => validateDefinitionHTML(definition.html));
   const now = new Date().toISOString();
@@ -38,7 +41,7 @@ export async function writeProject(project: Project, revision: number) {
     .prepare(
       'UPDATE studio_projects SET document=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?',
     )
-    .bind(JSON.stringify(p), now, 'main', revision)
+    .bind(JSON.stringify(p), now, account.projectId, revision)
     .run();
   if (!result.meta.changes)
     throw new APIError(
@@ -46,14 +49,6 @@ export async function writeProject(project: Project, revision: number) {
       409,
     );
   return { revision: revision + 1, updatedAt: now };
-}
-export class APIError extends Error {
-  constructor(
-    message: string,
-    public status = 400,
-  ) {
-    super(message);
-  }
 }
 export function replyError(e: unknown) {
   const status = e instanceof APIError ? e.status : 400;
@@ -63,7 +58,10 @@ export function replyError(e: unknown) {
       .map((i) => i.message)
       .slice(0, 3)
       .join('. ');
-  return Response.json({ error: message.slice(0, 500) }, { status });
+  return Response.json(
+    { error: message.slice(0, 500), code: e instanceof APIError ? e.code : undefined },
+    { status, headers: { 'Cache-Control': 'private, no-store' } },
+  );
 }
 export async function readBody(req: Request) {
   const origin = req.headers.get('origin');
@@ -87,7 +85,7 @@ async function secretKey() {
   const bytes = Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   return crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
 }
-export async function putSecret(provider: string, value: string) {
+export async function putSecret(account: StudioAccount, provider: string, value: string) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const cipher = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
@@ -102,13 +100,13 @@ export async function putSecret(provider: string, value: string) {
     .prepare(
       'INSERT INTO studio_credentials (provider,ciphertext,updated_at) VALUES (?,?,?) ON CONFLICT(provider) DO UPDATE SET ciphertext=excluded.ciphertext,updated_at=excluded.updated_at',
     )
-    .bind(provider, encoded, new Date().toISOString())
+    .bind(credentialKey(account, provider), encoded, new Date().toISOString())
     .run();
 }
-export async function getSecret(provider: string) {
+export async function getSecret(account: StudioAccount, provider: string) {
   const row = await database()
     .prepare('SELECT ciphertext FROM studio_credentials WHERE provider=?')
-    .bind(provider)
+    .bind(credentialKey(account, provider))
     .first<{ ciphertext: string }>();
   if (!row) return null;
   const bytes = Uint8Array.from(atob(row.ciphertext), (c) => c.charCodeAt(0));
@@ -119,13 +117,14 @@ export async function getSecret(provider: string) {
   );
   return new TextDecoder().decode(plain);
 }
-export async function connectionState() {
+export async function connectionState(account: StudioAccount) {
   const rows = await database()
-    .prepare('SELECT provider FROM studio_credentials')
+    .prepare('SELECT provider FROM studio_credentials WHERE provider IN (?,?)')
+    .bind(credentialKey(account, 'github'), credentialKey(account, 'openai'))
     .all<{ provider: string }>();
   return {
-    github: rows.results.some((r) => r.provider === 'github'),
-    openai: rows.results.some((r) => r.provider === 'openai'),
+    github: rows.results.some((r) => r.provider === credentialKey(account, 'github')),
+    openai: rows.results.some((r) => r.provider === credentialKey(account, 'openai')),
     vault: !!runtime.STUDIO_ENCRYPTION_KEY,
   };
 }

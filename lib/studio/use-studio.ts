@@ -1,10 +1,13 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { type Project, projectSchema } from './model';
-import { api, backup } from './client';
+import { api, backup, setAPIAccount } from './client';
+import type { StudioAccount } from './accounts';
 import { recoverDraft } from './draft';
 export type Connections = { github: boolean; openai: boolean; vault: boolean };
-export function useStudio() {
+export function useStudio(account: StudioAccount) {
+  const recoveryKey = 'studio-recovery:' + account.id;
+  const [sessionEnded, setSessionEnded] = useState(false);
   const [locked, setLockedState] = useState(false);
   const lockedRef = useRef(false);
   const setLocked = (v: boolean) => {
@@ -33,6 +36,7 @@ export function useStudio() {
   const notify = useCallback((s: string) => setNotice(s), []);
   const load = useCallback(async () => {
     try {
+      setAPIAccount(account.id);
       const d = await api('studio');
       const p = projectSchema.parse(d.project);
       doc.current = p;
@@ -43,7 +47,15 @@ export function useStudio() {
       setStatus('saved');
       setError('');
       try {
-        const raw = localStorage.getItem('studio-recovery');
+        // Only the verified legacy owner may recover the pre-account draft on this device.
+        if (account.projectId === 'main' && !localStorage.getItem(recoveryKey)) {
+          const legacy = localStorage.getItem('studio-recovery');
+          if (legacy) {
+            localStorage.setItem(recoveryKey, legacy);
+            localStorage.removeItem('studio-recovery');
+          }
+        }
+        const raw = localStorage.getItem(recoveryKey);
         if (raw) {
           const pending = recoverDraft(raw, p, d.revision);
           if (pending.kind === 'restore') {
@@ -54,7 +66,7 @@ export function useStudio() {
           } else if (pending.kind === 'conflict') {
             setRecovery(pending.project);
           } else {
-            localStorage.removeItem('studio-recovery');
+            localStorage.removeItem(recoveryKey);
             setRecovery(null);
           }
         }
@@ -63,7 +75,7 @@ export function useStudio() {
       setStatus('error');
       setError((e as Error).message);
     }
-  }, []);
+  }, [account.id, account.projectId, recoveryKey]);
   useEffect(() => {
     mounted.current = true;
     load();
@@ -71,52 +83,55 @@ export function useStudio() {
       mounted.current = false;
     };
   }, [load]);
-  const flush = useCallback(async function save(): Promise<void> {
-    if (inflight.current) {
-      await inflight.current;
-      if (JSON.stringify(doc.current) !== saved.current) return save();
-      return;
-    }
-    if (!doc.current || JSON.stringify(doc.current) === saved.current) return;
-    const current = doc.current;
-    const serialized = JSON.stringify(current);
-    setStatus('saving');
-    const job = (async () => {
-      try {
-        const d = await api('studio', { project: current, revision: revision.current }, 'PUT');
-        revision.current = d.revision;
-        saved.current = serialized;
-        if (JSON.stringify(doc.current) === serialized) {
-          localStorage.removeItem('studio-recovery');
-          if (mounted.current) setStatus('saved');
-        } else {
-          try {
-            localStorage.setItem(
-              'studio-recovery',
-              JSON.stringify({
-                project: doc.current,
-                revision: d.revision,
-                base: current,
-              }),
-            );
-          } catch {}
-          if (mounted.current) setStatus('pending');
-        }
-        setError('');
-      } catch (e) {
-        if (mounted.current) {
-          setStatus('error');
-          setError((e as Error).message);
-        }
-        throw e;
-      } finally {
-        inflight.current = null;
+  const flush = useCallback(
+    async function save(): Promise<void> {
+      if (inflight.current) {
+        await inflight.current;
+        if (JSON.stringify(doc.current) !== saved.current) return save();
+        return;
       }
-    })();
-    inflight.current = job;
-    await job;
-    if (JSON.stringify(doc.current) !== saved.current) return save();
-  }, []);
+      if (!doc.current || JSON.stringify(doc.current) === saved.current) return;
+      const current = doc.current;
+      const serialized = JSON.stringify(current);
+      setStatus('saving');
+      const job = (async () => {
+        try {
+          const d = await api('studio', { project: current, revision: revision.current }, 'PUT');
+          revision.current = d.revision;
+          saved.current = serialized;
+          if (JSON.stringify(doc.current) === serialized) {
+            localStorage.removeItem(recoveryKey);
+            if (mounted.current) setStatus('saved');
+          } else {
+            try {
+              localStorage.setItem(
+                recoveryKey,
+                JSON.stringify({
+                  project: doc.current,
+                  revision: d.revision,
+                  base: current,
+                }),
+              );
+            } catch {}
+            if (mounted.current) setStatus('pending');
+          }
+          setError('');
+        } catch (e) {
+          if (mounted.current) {
+            setStatus('error');
+            setError((e as Error).message);
+          }
+          throw e;
+        } finally {
+          inflight.current = null;
+        }
+      })();
+      inflight.current = job;
+      await job;
+      if (JSON.stringify(doc.current) !== saved.current) return save();
+    },
+    [account.id, account.projectId, recoveryKey],
+  );
   const update = useCallback(
     (recipe: (p: Project) => void, group = true) => {
       if (!doc.current || lockedRef.current) return;
@@ -135,7 +150,7 @@ export function useStudio() {
       tick((t) => t + 1);
       try {
         localStorage.setItem(
-          'studio-recovery',
+          recoveryKey,
           JSON.stringify({
             project: next,
             revision: revision.current,
@@ -148,7 +163,7 @@ export function useStudio() {
         );
       }
     },
-    [notify],
+    [notify, recoveryKey],
   );
   const replace = useCallback((p: Project) => update((d) => Object.assign(d, p), false), [update]);
   useEffect(() => {
@@ -176,7 +191,7 @@ export function useStudio() {
       if (new Blob([body]).size < 60000) {
         fetch('/api/studio', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Studio-Account': account.id },
           body,
           keepalive: true,
         }).catch(() => {});
@@ -192,7 +207,7 @@ export function useStudio() {
       window.removeEventListener('online', retry);
       document.removeEventListener('visibilitychange', saveWhenHidden);
     };
-  }, [flush]);
+  }, [flush, account.id]);
   useEffect(() => {
     if (!notice) return;
     const t = setTimeout(() => setNotice(''), 6000);
@@ -202,14 +217,14 @@ export function useStudio() {
     const source = back ? past : future,
       target = back ? future : past;
     const next = source.current.pop();
-    if (!next || !doc.current) return;
+    if (!next || !doc.current || lockedRef.current) return;
     target.current.push(doc.current);
     doc.current = next;
     setProject(next);
     setStatus('pending');
     try {
       localStorage.setItem(
-        'studio-recovery',
+        recoveryKey,
         JSON.stringify({
           project: next,
           revision: revision.current,
@@ -247,10 +262,30 @@ export function useStudio() {
     setProject(p);
     setStatus('saved');
     setError('');
-    localStorage.removeItem('studio-recovery');
+    localStorage.removeItem(recoveryKey);
     tick((t) => t + 1);
   }
+  useEffect(() => {
+    const stop = () => {
+      setSessionEnded(true);
+      setLocked(true);
+    };
+    const verify = () => {
+      api('account').catch(() => {});
+    };
+    window.addEventListener('studio-session-ended', stop);
+    window.addEventListener('pageshow', verify);
+    window.addEventListener('focus', verify);
+    return () => {
+      window.removeEventListener('studio-session-ended', stop);
+      window.removeEventListener('pageshow', verify);
+      window.removeEventListener('focus', verify);
+    };
+  }, [account.id]);
   return {
+    account,
+    recoveryKey,
+    sessionEnded,
     locked,
     setLocked,
     acceptServer,
